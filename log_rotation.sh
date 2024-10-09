@@ -1,26 +1,26 @@
 #!/bin/bash
 
-# Define log directory and rotation settings
-LOG_DIR="/var/log/httpd"       # Directory where your logs are stored
-ARCHIVE_DIR="/home/ec2-user/assignment/logs/archive"  # Directory where logs will be archived
+# Define log directory and directory where the atchived logs shoud store
+LOG_DIR="/var/log/httpd"       # Directory where the logs are stored
+ARCHIVE_DIR="/home/ec2-user/assignment/logs/archive"  # Directory where logs should archived
 DAYS_TO_KEEP=30                 # Number of days to keep logs before deleting
 
-# Create archive directory if it doesn't exist
+# Log errors for find issues in the script
+exec 2>/home/ec2-user/assignment/logs/rotation_error.log
+
+# Create archive directory if it not exist
 mkdir -p $ARCHIVE_DIR
 
-# Archive logs older than 1 day (compressing them into .gz files)
-find $LOG_DIR -type f -name "*.log" -mtime +7 -exec gzip {} \;
-find $LOG_DIR -type f -name "*.log.gz" -mtime +7 -exec mv {} $ARCHIVE_DIR \;
+# Archive logs older than 1 day
+find $LOG_DIR -type f -name "*_log-*" -mtime +1 -exec gzip {} \;
 
-# Delete archived logs older than $DAYS_TO_KEEP days
-find $ARCHIVE_DIR -type f -name "*.log.gz" -mtime +$DAYS_TO_KEEP -exec rm -f {} \;
+# Move gzipped logs to the archive directory
+find $LOG_DIR -type f -name "*.gz" -exec mv {} $ARCHIVE_DIR \;
 
-# Optional: Rotate current logs by renaming (e.g., app.log -> app.log.1)
-for logfile in $LOG_DIR/*.log; do
-    mv "$logfile" "${logfile}.1"
-done
+# Delete archived logs older than 30 days
+find $ARCHIVE_DIR -type f -name "*.gz" -mtime +$DAYS_TO_KEEP -exec rm -f {} \;
 
-# Optional: Restart log-generating service if needed (replace with your service)
-# service myapp restart
+# Optional: Restart log-generating service
+sudo systemctl restart httpd
 
 echo "Log rotation completed successfully."

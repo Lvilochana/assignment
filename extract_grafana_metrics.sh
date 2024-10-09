@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Configuration
-LOG_DIR="/var/log/grafana"   # Directory where Grafana logs are stored
-OUTPUT_DIR="/var/log/grafana_summary"  # Directory where structured logs will be stored
-FORMAT="json"  # Set to either 'json' or 'csv'
+LOG_DIR="/var/log/grafana"   # Grafana logs stored location
+OUTPUT_DIR="/home/ec2-user/assignment/logs/grafana_metrics_logs"  # structured logs should stored location
+FORMAT="json"  # want output format
 OUTPUT_FILE="$OUTPUT_DIR/system_metrics_summary_$(date +%Y-%m-%d).$FORMAT"  # File to store the summary
 
-# Create output directory if it doesn't exist
+# Create output directory if it not exist
 mkdir -p "$OUTPUT_DIR"
 
 # Initialize variables for performance metrics
@@ -15,10 +15,10 @@ total_memory=0
 total_disk_io=0
 log_count=0
 
-# Iterate through each log file in the Grafana log directory
+# process log files in the Grafana log directory
 for log_file in "$LOG_DIR"/*.log; do
     while read -r line; do
-        # Extract performance metrics from the log file (assuming JSON format in Grafana logs)
+        # Extract performance metrics from the log file 
         # Modify jq selectors based on actual Grafana log structure
         cpu_usage=$(echo "$line" | jq '.cpu_usage' 2>/dev/null)
         memory_usage=$(echo "$line" | jq '.memory_usage' 2>/dev/null)
@@ -26,7 +26,7 @@ for log_file in "$LOG_DIR"/*.log; do
 
         # Skip logs with missing or empty values
         if [[ -n $cpu_usage && -n $memory_usage && -n $disk_io ]]; then
-            # Aggregate the values
+            # gettin total values
             total_cpu=$(echo "$total_cpu + $cpu_usage" | bc)
             total_memory=$(echo "$total_memory + $memory_usage" | bc)
             total_disk_io=$(echo "$total_disk_io + $disk_io" | bc)
@@ -37,7 +37,7 @@ for log_file in "$LOG_DIR"/*.log; do
     done < "$log_file"
 done
 
-# Calculate average metrics if logs were processed
+# Calculate average metrics 
 if [[ $log_count -gt 0 ]]; then
     avg_cpu=$(echo "scale=2; $total_cpu / $log_count" | bc)
     avg_memory=$(echo "scale=2; $total_memory / $log_count" | bc)
@@ -59,12 +59,12 @@ if [[ "$FORMAT" == "json" ]]; then
 }" > "$OUTPUT_FILE"
 
 # Log metrics in CSV format
-elif [[ "$FORMAT" == "csv" ]]; then
-    # Add CSV header if file doesn't exist
-    if [[ ! -f "$OUTPUT_FILE" ]]; then
-        echo "timestamp,average_cpu_usage,average_memory_usage,average_disk_io,logs_processed" > "$OUTPUT_FILE"
-    fi
-    echo "$(date),$avg_cpu,$avg_memory,$avg_disk_io,$log_count" >> "$OUTPUT_FILE"
+#elif [[ "$FORMAT" == "csv" ]]; then
+#   # Add CSV header if file doesn't exist
+#   if [[ ! -f "$OUTPUT_FILE" ]]; then
+#       echo "timestamp,average_cpu_usage,average_memory_usage,average_disk_io,logs_processed" > "$OUTPUT_FILE"
+#   fi
+#   echo "$(date),$avg_cpu,$avg_memory,$avg_disk_io,$log_count" >> "$OUTPUT_FILE"
 fi
 
 # Output a success message
